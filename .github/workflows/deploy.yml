@@ -1,0 +1,45 @@
+name: Deploy React to EC2
+
+on:
+    push:
+        branches: [main] # Deploy on pushes to main branch
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build React app
+              run: npm run build
+
+            - name: Prepare SSH key
+              run: |
+                  echo "${{ secrets.EC2_SSH_KEY }}" > ./deploy_key
+                  chmod 600 ./deploy_key
+
+            - name: Ensure rsync exists
+              run: sudo apt-get update && sudo apt-get install -y rsync
+
+            - name: Deploy dist/ to EC2 via rsync
+              env:
+                  SSH_PORT: 22
+                  EC2_USER: ${{ secrets.EC2_USER }}
+                  EC2_HOST: ${{ secrets.EC2_HOST }}
+                  DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
+              run: |
+                  rsync -avz --delete -e "ssh -i ./deploy_key -o StrictHostKeyChecking=no -p $SSH_PORT" dist/ ${EC2_USER}@${EC2_HOST}:${DEPLOY_PATH}/
+
+            - name: Reload Nginx
+              run: |
+                  ssh -i ./deploy_key -o StrictHostKeyChecking=no -p 22 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo systemctl reload nginx"
