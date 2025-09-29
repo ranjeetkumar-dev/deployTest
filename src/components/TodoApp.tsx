@@ -152,7 +152,7 @@ const TodoApp = () => {
                 : "from-purple-600 via-pink-600 to-indigo-600"
             } bg-clip-text text-transparent`}
           >
-            Todo APP APP APPP APPP
+            Todo APP
           </h1>
           <p
             className={`text-lg ${
